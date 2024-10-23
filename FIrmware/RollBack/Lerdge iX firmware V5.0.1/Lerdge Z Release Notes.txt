@@ -1,0 +1,89 @@
+V4.3.4
+Add hardware driver for Z motherboard
+
+V4.3.5
+1. Independently optimize the EX axis function to support the Lerdge-Z motherboard
+2. Improve the expansion interface driver of the Lerdge-Z motherboard
+
+V4.3.6
+1. Adjust the corresponding relationship between the automatic leveling points and the leveling algorithm.
+       Set the leveling point to 0, the system disables the automatic leveling function
+       Set the number of leveling points to 1, and the system uses the plane equation algorithm to level with three-point sampling
+       Set the number of leveling points to 2, the system adopts bilinear algorithm, leveling through four-point sampling
+       Set the number of leveling points n (2<n<32), the system adopts grid bilinear algorithm, and leveling through n*n points sampling
+2. Adjust the material detection logic to reduce the suspension problem caused by misreporting that the consumables are exhausted.
+
+V4.3.6.1
+1. Remove the check of the effective number of detection points, and solve the problem that some users feedback that they cannot be detected normally after the automatic leveling exceeds 3 points.
+
+V4.4.1
+1. The internal storage space is re-planned. After updating the firmware, you must restore the factory settings and reset and level them.
+2. Rewrite the material detection filter algorithm to reduce the false alarm rate of material detection (currently in the test version)
+3. Increase the mileage statistics of each axis, which can be viewed in the system information (currently in the test version)
+4. Change the high-level duration of the pulse signal of each axis from the original fixed 3us to a dynamic change with the pulse frequency, so as to be better compatible with more drives
+5. Reduce the pulse upper limit frequency of each axis, from the original 180Khz to 150Khz (mainly a compromise made to be compatible with the dynamic adjustment of the pulse time)
+6. Add the function of automatically raising the Z axis after exiting the leveling interface to prevent the possibility of directly heating the print head after leveling and causing the printing platform to be scalded
+7. Add the homing icon indication function on the main interface
+8. Optimize the tool setting accuracy during pause and unexpected power failure, after saving the printing progress, when continuing to print
+9. Added support for M73 command to display remaining time (for prusaslicer slicing software)
+10. Fix the bug that the temperature is reset to zero when resuming printing after the temperature error is paused
+11. Repair the recovery error bug that occurs when the refueling action is not completed and clicks to continue printing when the refueling is suspended
+12. Fix some display errors
+
+V4.4.2
+1. Add the thumbnail function that supports PrusaSlicer slicing software
+2. Solve the problem of memory read crash or error reported by some users. The current solution direction may be memory overflow.
+3. Add the function of fault indicator light
+
+V4.4.3
+1. Set the extrusion speed before withdrawing to a fixed 6mm/s to solve the problem that the extruder is jammed when the material is too fast before withdrawing in the old version.
+2. Modify the leveling icon on the leveling interface. When the number of leveling points is set to 0, it will be displayed in light gray, indicating that the icon is invalid. Increase the display of the current leveling points in the upper left corner
+
+V4.5.0
+1. Added the expansion code of the hot head for the expansion interface of the Z motherboard.
+2. When the adjustment material is exhausted and no one is handling it, only the heating function of the print head is turned off, and the temperature of the hot bed is not turned off, so as to prevent the printed model from falling off the printing platform due to the temperature drop of the platform.
+3. Fixed the timer index error during the initialization of the E-axis timer (this is the reason why the previous version had a probability of crash after linear extrusion was enabled).
+4. Adjust the action of unloading consumables: when the temperature of the print head is greater than 160°C to unload the consumables, the extruder will first extrude a little consumables at a speed of 6mm/s, and then unload the consumables.
+5. Adjusted the function position of the exit path planning mark to avoid the function abnormality caused by repeated nesting of functions under certain extreme conditions.
+6. Improve the response speed of LCD screen operation.
+7. When resuming printing, first extrude a little consumable to fill the inside of the entire print head with the material, so as to ensure that the interface of the print resumes to be perfect.
+8. Rewritten the algorithm and execution method of linear extrusion to prepare for the subsequent addition of curve acceleration and deceleration.
+9. Adjusted the method of M0 M25 execution pause to avoid the bug of infinite pause and recovery cycle when the Gcode file contains M0 M25.
+
+V4.6.0
+1. Fixed bugs in V4.5.0 series
+2. Added PT100 temperature measurement code for the Lerdge-Z motherboard, which can achieve a maximum temperature measurement of 550 degrees Celsius
+
+V5.0.0
+1: FreeRTOS system is added, and the whole system is changed from the original front-end and back-end control mode to multi-task control mode
+2: The motion acceleration and deceleration planning algorithm is reconstructed, and the 6-segment acceleration and deceleration planning method is used to make the acceleration and deceleration process softer and smoother
+3: The pulse generation algorithm calculation is reconstructed, and the pulse is calculated using an iterative method similar to the klipper firmware. Compared with the previous bresenham algorithm, the drive pulse can be sent more accurately. However, the single-axis pulse drive capability is reduced from the original maximum 200KHz to the maximum 40KHz
+4: The linear extrusion algorithm is reconstructed to achieve extruder pressure control matching the 6-segment acceleration and deceleration curve, and the pressure advance time is introduced
+5: The stepper motor drive algorithm is reconstructed to achieve more accurate stepper motor pulse control and improve the motor response speed and positioning accuracy
+6: The input shaping function is added. Currently, only the ZV shaper can be used. Other shapers can be selected, but there is no effect. The function of automatic adjustment of input shaping parameters has not yet been added. If the parameters are entered manually, the shaping effect is not obvious.
+7: The printing interface has been modified to support the display of model preview during printing. The model thumbnail needs to be set to qoi format in the slicing software, and the size is set to 216x216.
+Special note:
+In order to achieve the above functions, the V5.0.0 version removes the support for the delta structure, so the V5.0.0 version firmware can only support the standard xyz structure; core-xy structure; core-xz structure models.
+
+The V5.0.0 version is only applicable to the Lerdge-X Lerdge-Z two motherboards, not the Lerdge-K motherboard, because the pulse iteration algorithm can try the maximum pulse of 200KHZ in the STM32F407 (168MHz) main control, which is 40KHz (200 / 5) on the 5-week motherboard. For the Lerdge-K motherboard, there are 6 axes and more onboard resources. The new firmware cannot improve the performance of Lerdge-K.
+
+About speed and acceleration
+The V5.0.0 version is developed to significantly improve speed and acceleration. To ensure that the motor does not lose steps during high acceleration and high speed, it is necessary to ensure that each pulse appears at the correct time during the motor movement. Therefore, the previously used Bresenham algorithm is abandoned and the pulse iteration algorithm is used instead to send pulses at a more accurate time. The pros and cons of the two algorithms are compared as follows:
+
+Bresenham algorithm: Advantages: Small amount of calculation, one calculation can determine the next pulse time of multiple axes. Therefore, multi-axis motion with a higher pulse frequency can be output
+Disadvantages: In a single-axis pulse sequence, there will be a certain error between the occurrence time of each pulse and the actual motor rotor position time. At high speed, this error may cause step loss or stall
+
+Iteration method: Advantages: Using the float type calculation of the STM32F4 series MCU, the error between the occurrence time of each pulse and the actual motor rotor position time is less than 1us, and higher acceleration and higher cruising speed can be used
+Disadvantages: The amount of calculation is large, and each calculation can only calculate one pulse time of one axis. Therefore, the operating frequency and computing power of the MCU determine the upper limit of the calculation (200KHz), and a pulse is calculated in about 5us, and then distributed to each axis.
+
+In addition to the pulse frequency of the drive, the running speed is also related to the number of subdivisions of the drive, the step angle of the motor, and the transmission structure.
+For example:
+Using the iteration method: the maximum driving capacity of the X-axis is 40KHz, using a 1.8-degree 42 stepper motor, the number of subdivisions of the drive is set to 16 subdivisions, and the transmission structure uses a 2GT-20 tooth synchronous wheel (circumference is 40mm).
+Then the maximum running speed of the X-axis is: 40000 ÷ (360 ÷ 1.8 × 16) × 40 = 500mm/s. If the number of subdivisions of the drive is changed to 32, the maximum running speed is: 40000 ÷ (360 ÷ 1.8 × 32) × 40 = 250mm/s
+
+V5.0.1
+1. Fix the problem that the motor does not stop when the limit is not turned on when the EX axis is used for homing other axes
+2. Fix the problem of incorrect calculation of the Y-axis motion of the corexz structure
+3. Improve the refresh rate of the encoding knob and improve the smoothness of the knob operation
+4. Improve the priority of the temperature task
+5. Temporarily disable the travel statistics function of each axis
